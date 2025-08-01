@@ -15,5 +15,6 @@ namespace Cloud
 {
     void loop();
     void setup();
+    void sendToCloud(int32_t sens1, int32_t sens2, int32_t sens3, int32_t sens4);
 } 
 #endif // CLOUD_H

@@ -8,26 +8,53 @@
 
 namespace Cloud
 {
-    String MQTT_TOPIC_BASE      = "humiot"; // Beispiel fuer Station
+    String MQTT_TOPIC_BASE      = "capsense"; // Beispiel fuer Station
     String MQTT_TOPIC_SUBSCRIBE = MQTT_TOPIC_BASE+"/cmd"; // e.g. gartenhaus/cmd
-    String MQTT_TOPIC_PUBLISH   = MQTT_TOPIC_BASE+"/sensorData"; // e.g. gartenhaus/sensorData
+    String MQTT_TOPIC_PUBLISH   = "/sensorData"; // e.g. gartenhaus/sensorData
 
-    uint32_t INTERVAL_SEND_DATA = 60000; // [ms] alle x ms messwerte schicken
-
+    char myMqttId[18]; // wird zur laufzeit ausgelesen und ist eindeutig
+    
     bool noWifiActive;
+    bool clientConnected;
 
     WiFiClient espClient;
     PubSubClient client(espClient);
 
-    // BEISPIEL
-    void datenSchicken() {
-        String topic = MQTT_TOPIC_PUBLISH + "/temp";
-        DEBUG_INFO(topic);
-        client.publish(topic.c_str(), String(21.2f).c_str());
-        topic = MQTT_TOPIC_PUBLISH + "/humidity";
-        client.publish(topic.c_str(), String(67.5f).c_str());
-        topic = MQTT_TOPIC_PUBLISH + "/pressure";
-        client.publish(topic.c_str(), String(1013).c_str());
+    // mac adresse als geraete id verwenden
+    void getDeviceId() {
+        uint8_t mac[6];
+        esp_read_mac(mac, ESP_MAC_WIFI_STA);  // oder WiFi.macAddress() für String-Form
+        snprintf(myMqttId, sizeof(myMqttId), "%02X%02X%02X%02X%02X%02X",
+                mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+
+        DEBUG_PRINTF("MQTT ID: %s", myMqttId);
+    }
+
+    void myPublish(const char *topic, const char *payload)
+    {
+        DEBUG_PRINTF("topic: %s, payload:%s\r\n", topic, payload);
+        client.publish(topic, payload);
+    }
+
+    void datenSchicken(int32_t sens1, int32_t sens2, int32_t sens3, int32_t sens4) 
+    {
+        // topic aufbau:
+        // capsense/<device_id>/sensor/<sensor_id>/moisture
+        //
+        // beispiel:
+        // capsense/ECE3348E7474/sensor/1/moisture
+        String topicSensBase =  MQTT_TOPIC_BASE + "/" + String(myMqttId) + "/sensor/";
+        String topic = topicSensBase + "1/moisture";
+        myPublish(topic.c_str(), String(sens1).c_str());
+        
+        topic = topicSensBase + "2/moisture";
+        myPublish(topic.c_str(), String(sens2).c_str());
+
+        topic = topicSensBase + "3/moisture";
+        myPublish(topic.c_str(), String(sens3).c_str());
+
+        topic = topicSensBase + "4/moisture";
+        myPublish(topic.c_str(), String(sens4).c_str());
     }
 
     void callback(char *topic, byte *payload, unsigned int length)
@@ -53,7 +80,8 @@ namespace Cloud
 
     void setup()
     {
-        DEBUG_INFO("WIFI MAC:m" + WiFi.macAddress());
+        DEBUG_INFO("WIFI MAC= " + WiFi.macAddress());
+        getDeviceId();
     
         DEBUG_INFO("📶 Verbinde mit: " + String(WIFI_SSID));
         noWifiActive = true;
@@ -85,7 +113,7 @@ namespace Cloud
         }
         return client.connected();
     }
-    void loop()
+    void sendToCloud(int32_t sens1, int32_t sens2, int32_t sens3, int32_t sens4)
     {
         uint32_t curMillis = millis();
         static uint32_t lastReconnectAttempt = 0;
@@ -105,14 +133,9 @@ namespace Cloud
             client.loop();
         }
 
-        static uint32_t msLastTestcycle;
-        if (curMillis - msLastTestcycle > INTERVAL_SEND_DATA) {
-            msLastTestcycle = curMillis;
-            if (!clientConnected) {
-                return;
-            }
-            DEBUG_INFO("daten schicken");
-            datenSchicken();
+        if (!clientConnected) {
+            return;
         }
+        datenSchicken(sens1,  sens2,  sens3,  sens4);
     }
 } 
