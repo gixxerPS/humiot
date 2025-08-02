@@ -87,16 +87,37 @@ namespace Cloud
         if (sepIndex != -1) {
             sensor_id = message.substring(0, sepIndex).toInt();
             kommando = message.substring(sepIndex + 1);
-        } else {
-            DEBUG_ERROR("Ungültiges Kommando-Format: " + message);
+            if (kommando == "dry") { 
+                Sensor::setCalibrationDry(sensor_id);
+            } else if (kommando == "wet"){
+                Sensor::setCalibrationWet(sensor_id);
+            } else {
+                DEBUG_ERROR("Ungültiges Kommando: " + kommando);
+            }
+        } else { // kein ';' gefunden
+            // befehl = jetzt messen ?
+            if (message == "meas") {
+                Sensor::MeasVal sens[4];
+                if ( !Sensor::measure4Capsens(sens) ) {
+                    DEBUG_ERROR("MESSFEHLER. ADS NICHT GEFUNDEN");
+                }
+                sendToCloud(sens);
+            } else { // auch kein messbefehl, dann ungueltiger cmd
+                DEBUG_ERROR("Ungültiges Kommando-Format: " + message);
+            }
         }
-        if (kommando == "dry") { 
-            Sensor::setCalibrationDry(sensor_id);
-        } else if (kommando == "wet"){
-            Sensor::setCalibrationWet(sensor_id);
-        } else {
-            DEBUG_ERROR("Ungültiges Kommando: " + kommando);
+    }
+
+    bool reconnect() {
+        if (client.connect("humiotClient")) {
+            // ... and resubscribe
+
+            // capsense/ECE3348E7474/sensor/1/moisture
+            String topicSubscribe =  MQTT_TOPIC_BASE + "/" + String(myMqttId) + MQTT_SUBTOPIC_SUBSCRIBE;
+            DEBUG_INFO("subcribe to topic: " + topicSubscribe);
+            client.subscribe(topicSubscribe.c_str());
         }
+        return client.connected();
     }
 
     void setup()
@@ -121,24 +142,27 @@ namespace Cloud
             noWifiActive = false;
             client.setServer(MQTT_SERVER, 1883);
             client.setCallback(callback);
+            reconnect();
+
         } else {
             DEBUG_ERROR("\n❌ WLAN-Verbindung fehlgeschlagen!");
         }
     }
-    bool reconnect() {
-        if (client.connect("humiotClient")) {
-            // Once connected, publish an announcement...
-            client.publish("test","hello world");
-            // ... and resubscribe
-
-            // capsense/ECE3348E7474/sensor/1/moisture
-            String topicSubscribe =  MQTT_TOPIC_BASE + "/" + String(myMqttId) + MQTT_SUBTOPIC_SUBSCRIBE;
-            DEBUG_INFO("subcribe to topic: " + topicSubscribe);
-            client.subscribe(topicSubscribe.c_str());
-        }
-        return client.connected();
-    }
+   
     void sendToCloud(Sensor::MeasVal sens[4])
+    {
+        if (!clientConnected) {
+            DEBUG_WARN("Attempt to reconnect");
+            if (reconnect()) {
+                DEBUG_INFO("successfully reconnected");
+            } else {
+                DEBUG_ERROR("VERBINDUNGSVERSUCH FEHLGESCHLAGEN.");
+            }
+        }
+        datenSchicken(sens);
+    }
+
+    void loop()
     {
         uint32_t curMillis = millis();
         static uint32_t lastReconnectAttempt = 0;
@@ -157,10 +181,5 @@ namespace Cloud
             // Client connected
             client.loop();
         }
-
-        if (!clientConnected) {
-            return;
-        }
-        datenSchicken(sens);
     }
 } 

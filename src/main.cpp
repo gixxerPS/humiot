@@ -6,13 +6,14 @@
  */
 #include <Arduino.h>
 #include <limits.h>
+#include <WiFi.h>
 
 #include "debug.h"
 #include "cloud.h"
 #include "sensor.h"
 
-const uint32_t CYCLE_TEST = 2000; // [ms] zyklus fuer testfunktionen
-const uint32_t INTERVAL_MEAS_AND_SEND_DATA = 36000; // [ms] alle x ms messwerte schicken
+const uint32_t CYCLE_TEST = 10000; // [ms] zyklus fuer testfunktionen
+const uint32_t INTERVAL_MEAS_AND_SEND_DATA = 360000; // [ms] alle x ms messwerte schicken
 
 void setup(void)
 {
@@ -32,6 +33,8 @@ void loop(void)
   // //=============================================================================
   // // applikation / display logik
   // //=============================================================================
+  Cloud::loop();
+  
   static uint32_t msLastMeascycle;
   if (curMillis - msLastMeascycle > INTERVAL_MEAS_AND_SEND_DATA) {
     msLastMeascycle = curMillis;
@@ -54,6 +57,11 @@ void loop(void)
   if (curMillis - msLastTestcycle > CYCLE_TEST) {
     msLastTestcycle = curMillis;
 
-    
+    //–30 bis –50	  Exzellent	  Sehr nah am Access Point
+    // –51 bis –60	Gut	        Schnelle und stabile Verbindung
+    // –61 bis –70	OK ✅	      Stabil, ausreichend für MQTT, Web
+    // –71 bis –80	Schwach ⚠️	  Möglich, aber mit Aussetzern
+    // < –80	      Kritisch ❌	Hohe Fehlerrate, Verbindungsabbruch
+    DEBUG_PRINTF("Aktuelle Signalstärke: %ld dBm\r\n", WiFi.RSSI());
   }
 }
