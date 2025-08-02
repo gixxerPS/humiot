@@ -12,7 +12,7 @@
 #include "sensor.h"
 
 const uint32_t CYCLE_TEST = 2000; // [ms] zyklus fuer testfunktionen
-const uint32_t INTERVAL_MEAS_AND_SEND_DATA = 3600000; // [ms] alle x ms messwerte schicken
+const uint32_t INTERVAL_MEAS_AND_SEND_DATA = 36000; // [ms] alle x ms messwerte schicken
 
 void setup(void)
 {

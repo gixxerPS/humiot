@@ -17,3 +17,13 @@ humidity sensor box ready for iot
 ´´´
 SELECT * FROM moisture WHERE  time > now() - 7d
 ´´´
+
+
+### csv aus grafana daten erzeugen
+
+1. Öffne dein Dashboard.
+2. Fahre mit der Maus über das gewünschte Panel.
+3. Klicke auf das Panel-Menü (drei Punkte ⋮) oben rechts.
+4. Wähle "Inspect" → "Data".
+5. Dort siehst du eine Tabelle mit den Abfragedaten.
+6. Klicke auf "Download CSV".
