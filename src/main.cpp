@@ -1,6 +1,8 @@
 /**
  * @mainpage
  * ESP32 mit ADS1115 fuer 4 bodenfeuchte sensoren capsens.
+ * 
+ * 
  */
 #include <Arduino.h>
 #include <limits.h>
@@ -34,7 +36,7 @@ void loop(void)
   if (curMillis - msLastMeascycle > INTERVAL_MEAS_AND_SEND_DATA) {
     msLastMeascycle = curMillis;
 
-    int32_t uv0=LONG_MIN, uv1=LONG_MIN, uv2=LONG_MIN, uv3=LONG_MIN;
+    Sensor::MeasVal uv0, uv1, uv2, uv3;
 
     if ( !Sensor::measure4Capsens(uv0, uv1, uv2, uv3) ) {
       DEBUG_ERROR("MESSFEHLER. ADS NICHT GEFUNDEN");

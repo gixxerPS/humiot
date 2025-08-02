@@ -3,6 +3,8 @@
 
 #include <Arduino.h>
 
+#include "sensor.h"
+
 /**
  * Modul fuer Cloud-Funktionen.
  * 
@@ -15,6 +17,6 @@ namespace Cloud
 {
     void loop();
     void setup();
-    void sendToCloud(int32_t sens1, int32_t sens2, int32_t sens3, int32_t sens4);
+    void sendToCloud(Sensor::MeasVal sens1, Sensor::MeasVal sens2, Sensor::MeasVal sens3, Sensor::MeasVal sens4);
 } 
 #endif // CLOUD_H

@@ -2,14 +2,16 @@
 
 #include <WiFi.h>
 #include <PubSubClient.h>
+#include <ArduinoJson.h>
 
 #include "debug.h"
 #include "password.h"
+#include "sensor.h"
 
 namespace Cloud
 {
     String MQTT_TOPIC_BASE      = "capsense"; // Beispiel fuer Station
-    String MQTT_TOPIC_SUBSCRIBE = MQTT_TOPIC_BASE+"/cmd"; // e.g. gartenhaus/cmd
+    String MQTT_SUBTOPIC_SUBSCRIBE = "/cmd"; // e.g. gartenhaus/cmd
     String MQTT_TOPIC_PUBLISH   = "/sensorData"; // e.g. gartenhaus/sensorData
 
     char myMqttId[18]; // wird zur laufzeit ausgelesen und ist eindeutig
@@ -36,8 +38,19 @@ namespace Cloud
         client.publish(topic, payload);
     }
 
-    void datenSchicken(int32_t sens1, int32_t sens2, int32_t sens3, int32_t sens4) 
+    void datenSchicken(Sensor::MeasVal sens1, Sensor::MeasVal sens2, Sensor::MeasVal sens3, Sensor::MeasVal sens4) 
     {
+
+        // StaticJsonDocument<200> doc;
+        // doc["raw"] = sens1.raw;
+        // doc["scaled"] = sens1.scaled;
+
+        // char buffer[256];
+        // size_t n = serializeJson(doc, buffer);
+
+        // client.publish("capsense/device123/sensor/moisture", buffer, n);
+
+
         // topic aufbau:
         // capsense/<device_id>/sensor/<sensor_id>/moisture
         //
@@ -45,36 +58,67 @@ namespace Cloud
         // capsense/ECE3348E7474/sensor/1/moisture
         String topicSensBase =  MQTT_TOPIC_BASE + "/" + String(myMqttId) + "/sensor/";
         String topic = topicSensBase + "1/moisture";
-        myPublish(topic.c_str(), String(sens1).c_str());
+        myPublish(topic.c_str(), String(sens1.scaled).c_str());
         
         topic = topicSensBase + "2/moisture";
-        myPublish(topic.c_str(), String(sens2).c_str());
+        myPublish(topic.c_str(), String(sens2.scaled).c_str());
 
         topic = topicSensBase + "3/moisture";
-        myPublish(topic.c_str(), String(sens3).c_str());
+        myPublish(topic.c_str(), String(sens3.scaled).c_str());
 
         topic = topicSensBase + "4/moisture";
-        myPublish(topic.c_str(), String(sens4).c_str());
+        myPublish(topic.c_str(), String(sens4.scaled).c_str());
+
+        // topic aufbau:
+        // capsense/<device_id>/sensor/<sensor_id>/moistureRaw
+        //
+        // beispiel:
+        // capsense/ECE3348E7474/sensor/1/moistureRaw
+        topic = topicSensBase + "1/moistureRaw";
+        myPublish(topic.c_str(), String(sens1.raw).c_str());
+        
+        topic = topicSensBase + "2/moistureRaw";
+        myPublish(topic.c_str(), String(sens2.raw).c_str());
+
+        topic = topicSensBase + "3/moistureRaw";
+        myPublish(topic.c_str(), String(sens3.raw).c_str());
+
+        topic = topicSensBase + "4/moistureRaw";
+        myPublish(topic.c_str(), String(sens4.raw).c_str());
     }
 
     void callback(char *topic, byte *payload, unsigned int length)
     {
-        DEBUG_INFO("Message received on topic: ");
-        DEBUG_INFO(topic);
-        DEBUG_INFO("Message: ");
-        for (int i = 0; i < length; i++)
-        {
-            DEBUG_INFO( String(payload[i]));
-        }
-        if ((char)payload[0] == '1') { // we subscribed to the right topic so '1' => start
-            // digitalWrite(LED_BUILTIN, LOW);
-            // cmdSend = true;
-            DEBUG_INFO("Licht AN");
-            //DO::setOutHeater(HIGH); // TEST !!!
+        // DEBUG_INFO("Message received on topic: ");
+        // DEBUG_INFO(topic);
+        // DEBUG_INFO("Message: ");
+        // for (int i = 0; i < length; i++)
+        // {
+        //     DEBUG_INFO( String(payload[i]));
+        // }
+
+        // payload in durchsuchbaren string umwandeln
+        char msg[length + 1];
+        memcpy(msg, payload, length);
+        msg[length] = '\0';  // Null-Terminierung anhängen
+        String message = String(msg);  // in Arduino String umwandeln
+        String kommando;
+        int32_t sensor_id;
+
+        // string durchsuchen nach ';'
+        int sepIndex = message.indexOf(';');
+        if (sepIndex != -1) {
+            sensor_id = message.substring(0, sepIndex).toInt();
+            kommando = message.substring(sepIndex + 1);
         } else {
-            // digitalWrite(LED_BUILTIN, HIGH);
-            DEBUG_INFO("Licht AUS");
-            //DO::setOutHeater(LOW); // TEST !!!
+            DEBUG_ERROR("Ungültiges Kommando-Format: " + message);
+        }
+        if (kommando == "dry") { 
+            Sensor::setCalibrationDry(sensor_id);
+        } else if (kommando == "wet"){
+            Sensor::setCalibrationWet(sensor_id);
+        } else {
+            DEBUG_ERROR("Ungültiges Kommando: " + kommando);
         }
     }
 
@@ -109,11 +153,15 @@ namespace Cloud
             // Once connected, publish an announcement...
             client.publish("test","hello world");
             // ... and resubscribe
-            client.subscribe(MQTT_TOPIC_SUBSCRIBE.c_str());
+
+            // capsense/ECE3348E7474/sensor/1/moisture
+            String topicSubscribe =  MQTT_TOPIC_BASE + "/" + String(myMqttId) + MQTT_SUBTOPIC_SUBSCRIBE;
+            DEBUG_INFO("subcribe to topic: " + topicSubscribe);
+            client.subscribe(topicSubscribe.c_str());
         }
         return client.connected();
     }
-    void sendToCloud(int32_t sens1, int32_t sens2, int32_t sens3, int32_t sens4)
+    void sendToCloud(Sensor::MeasVal sens1, Sensor::MeasVal sens2, Sensor::MeasVal sens3, Sensor::MeasVal sens4)
     {
         uint32_t curMillis = millis();
         static uint32_t lastReconnectAttempt = 0;
