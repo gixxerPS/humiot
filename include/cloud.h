@@ -17,6 +17,6 @@ namespace Cloud
 {
     void loop();
     void setup();
-    void sendToCloud(Sensor::MeasVal sens1, Sensor::MeasVal sens2, Sensor::MeasVal sens3, Sensor::MeasVal sens4);
+    void sendToCloud(Sensor::MeasVal sens[4]);
 } 
 #endif // CLOUD_H

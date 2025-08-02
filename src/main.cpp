@@ -12,7 +12,7 @@
 #include "sensor.h"
 
 const uint32_t CYCLE_TEST = 2000; // [ms] zyklus fuer testfunktionen
-const uint32_t INTERVAL_MEAS_AND_SEND_DATA = 3000; // [ms] alle x ms messwerte schicken
+const uint32_t INTERVAL_MEAS_AND_SEND_DATA = 3600000; // [ms] alle x ms messwerte schicken
 
 void setup(void)
 {
@@ -36,15 +36,15 @@ void loop(void)
   if (curMillis - msLastMeascycle > INTERVAL_MEAS_AND_SEND_DATA) {
     msLastMeascycle = curMillis;
 
-    Sensor::MeasVal uv0, uv1, uv2, uv3;
+    Sensor::MeasVal sens[4];
 
-    if ( !Sensor::measure4Capsens(uv0, uv1, uv2, uv3) ) {
+    if ( !Sensor::measure4Capsens(sens) ) {
       DEBUG_ERROR("MESSFEHLER. ADS NICHT GEFUNDEN");
     }
-    DEBUG_PRINTF("AIN0: %ld %% | AIN1: %ld %% | AIN2: %ld %% | AIN3: %ld %%\n",
-                        uv0, uv1, uv2, uv3);
+    // DEBUG_PRINTF("AIN0: %ld %% | AIN1: %ld %% | AIN2: %ld %% | AIN3: %ld %%\n",
+    //                     uv0, uv1, uv2, uv3);
 
-    Cloud::sendToCloud(uv0, uv1, uv2, uv3);
+    Cloud::sendToCloud(sens);
   }
 
   //=============================================================================

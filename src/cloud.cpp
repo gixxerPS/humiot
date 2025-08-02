@@ -32,59 +32,36 @@ namespace Cloud
         DEBUG_PRINTF("MQTT ID: %s", myMqttId);
     }
 
-    void myPublish(const char *topic, const char *payload)
+    void myPublish(const char *topic, const uint8_t * payload, unsigned int plength)
     {
         DEBUG_PRINTF("topic: %s, payload:%s\r\n", topic, payload);
-        client.publish(topic, payload);
+        client.publish(topic, payload, plength);
     }
 
-    void datenSchicken(Sensor::MeasVal sens1, Sensor::MeasVal sens2, Sensor::MeasVal sens3, Sensor::MeasVal sens4) 
+    void datenSchicken(Sensor::MeasVal sens[4]) 
     {
+        JsonDocument doc;
+        char buffer[256];
+        size_t n;
 
-        // StaticJsonDocument<200> doc;
-        // doc["raw"] = sens1.raw;
-        // doc["scaled"] = sens1.scaled;
-
-        // char buffer[256];
-        // size_t n = serializeJson(doc, buffer);
-
-        // client.publish("capsense/device123/sensor/moisture", buffer, n);
-
-
-        // topic aufbau:
-        // capsense/<device_id>/sensor/<sensor_id>/moisture
-        //
-        // beispiel:
-        // capsense/ECE3348E7474/sensor/1/moisture
         String topicSensBase =  MQTT_TOPIC_BASE + "/" + String(myMqttId) + "/sensor/";
-        String topic = topicSensBase + "1/moisture";
-        myPublish(topic.c_str(), String(sens1.scaled).c_str());
-        
-        topic = topicSensBase + "2/moisture";
-        myPublish(topic.c_str(), String(sens2.scaled).c_str());
+        String topic;
+        for (uint8_t i=0; i<4; i++) {
+            doc["raw"] = sens[i].raw;
+            doc["scaled"] = sens[i].scaled;
 
-        topic = topicSensBase + "3/moisture";
-        myPublish(topic.c_str(), String(sens3.scaled).c_str());
+            n = serializeJson(doc, buffer);
 
-        topic = topicSensBase + "4/moisture";
-        myPublish(topic.c_str(), String(sens4.scaled).c_str());
-
-        // topic aufbau:
-        // capsense/<device_id>/sensor/<sensor_id>/moistureRaw
-        //
-        // beispiel:
-        // capsense/ECE3348E7474/sensor/1/moistureRaw
-        topic = topicSensBase + "1/moistureRaw";
-        myPublish(topic.c_str(), String(sens1.raw).c_str());
-        
-        topic = topicSensBase + "2/moistureRaw";
-        myPublish(topic.c_str(), String(sens2.raw).c_str());
-
-        topic = topicSensBase + "3/moistureRaw";
-        myPublish(topic.c_str(), String(sens3.raw).c_str());
-
-        topic = topicSensBase + "4/moistureRaw";
-        myPublish(topic.c_str(), String(sens4.raw).c_str());
+            // topic aufbau:
+            // capsense/<device_id>/sensor/<sensor_id>/moisture
+            //
+            // beispiel:
+            // capsense/ECE3348E7474/sensor/1/moisture
+            topic = topicSensBase + String(i+1) + "/moisture";
+            DEBUG_INFO("topic:" + topic);
+            DEBUG_PRINTF("payload:%s\r\n", buffer);
+            client.publish(topic.c_str(), buffer, n);
+        }
     }
 
     void callback(char *topic, byte *payload, unsigned int length)
@@ -161,7 +138,7 @@ namespace Cloud
         }
         return client.connected();
     }
-    void sendToCloud(Sensor::MeasVal sens1, Sensor::MeasVal sens2, Sensor::MeasVal sens3, Sensor::MeasVal sens4)
+    void sendToCloud(Sensor::MeasVal sens[4])
     {
         uint32_t curMillis = millis();
         static uint32_t lastReconnectAttempt = 0;
@@ -184,6 +161,6 @@ namespace Cloud
         if (!clientConnected) {
             return;
         }
-        datenSchicken(sens1,  sens2,  sens3,  sens4);
+        datenSchicken(sens);
     }
 } 

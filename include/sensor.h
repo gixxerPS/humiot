@@ -31,7 +31,7 @@ namespace Sensor
      * 
      * @return - false, wenn analogmodul (ADS1115) nicht erkannt 
      */
-    bool measure4Capsens(MeasVal &sens1, MeasVal &sens2, MeasVal &sens3, MeasVal &sens4);
+    bool measure4Capsens(Sensor::MeasVal sens[4]);
 
 
     
